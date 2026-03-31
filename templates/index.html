@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>NexusNet Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+      /* --- BASE STYLES --- */
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0f2f5;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+      }
+
+      /* --- LOBBY STYLES --- */
+      #lobby-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        background: #2c3e50;
+        color: white;
+      }
+      .lobby-card {
+        background: white;
+        color: #333;
+        padding: 30px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      }
+      .lobby-card h1 {
+        margin-top: 0;
+        color: #2980b9;
+      }
+      .input-field {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 16px;
+      }
+      .btn {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+        color: white;
+        transition: 0.2s;
+      }
+      .btn-blue {
+        background-color: #2980b9;
+      }
+      .btn-blue:hover {
+        background-color: #2471a3;
+      }
+      .btn-green {
+        background-color: #27ae60;
+      }
+      .btn-green:hover {
+        background-color: #219150;
+      }
+      .btn-gray {
+        background-color: #95a5a6;
+        margin-top: 5px;
+      }
+      .btn-gray:hover {
+        background-color: #7f8c8d;
+      }
+      .error-text {
+        color: #e74c3c;
+        font-size: 14px;
+        margin-top: 10px;
+        font-weight: bold;
+      }
+
+      /* --- APP STYLES --- */
+      #app-container {
+        display: none;
+        flex-direction: column;
+        height: 100%;
+      }
+      .header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 10px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      .header h2 {
+        margin: 0;
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      .room-badge {
+        background-color: #e74c3c;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        font-size: 0.9em;
+      }
+      .qr-section {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .qr-section img {
+        height: 45px;
+        border-radius: 5px;
+        background: white;
+        padding: 2px;
+      }
+      .qr-section a {
+        color: #64b5f6;
+        text-decoration: none;
+      }
+      .mobile-menu-btn {
+        display: none;
+        background-color: #34495e;
+        color: white;
+        border: 1px solid #7f8c8d;
+        padding: 8px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .main-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* --- SIDEBAR --- */
+      .sidebar {
+        width: 220px;
+        background-color: white;
+        border-right: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.3s ease;
+      }
+      .sidebar-header {
+        background-color: #ecf0f1;
+        padding: 15px;
+        font-weight: bold;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+        font-size: 0.9em;
+      }
+      #user-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        overflow-y: auto;
+        flex: 1;
+      }
+      #user-list li {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f9f9f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      #user-list li:hover {
+        background-color: #e8f4f8;
+      }
+      .online-dot {
+        width: 10px;
+        height: 10px;
+        background-color: #2ecc71;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .sidebar-overlay {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+      }
+
+      /* --- CHAT AREA --- */
+      .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background-color: #e5ddd5;
+        position: relative;
+      }
+      #chat-box {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+      .message {
+        padding: 10px 15px;
+        border-radius: 12px;
+        max-width: 65%;
+        word-wrap: break-word;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+      .message.system {
+        background-color: #fff3cd;
+        align-self: center;
+        font-size: 0.85em;
+        color: #856404;
+        border-radius: 20px;
+        text-align: center;
+        box-shadow: none;
+      }
+      .message.other {
+        background-color: white;
+        align-self: flex-start;
+        border-top-left-radius: 0;
+      }
+      .message.me {
+        background-color: #dcf8c6;
+        align-self: flex-end;
+        border-top-right-radius: 0;
+        padding-right: 35px;
+      }
+      .message.private {
+        border: 2px dashed #9b59b6;
+        background-color: #f5eef8;
+      }
+      .private-label {
+        color: #9b59b6;
+        font-size: 0.75em;
+        font-weight: bold;
+        margin-left: 5px;
+      }
+      .delete-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        opacity: 0.4;
+        padding: 0;
+        transition: opacity 0.2s;
+      }
+      .delete-btn:hover {
+        opacity: 1;
+      }
+      .message.deleted {
+        color: #888;
+        font-style: italic;
+        background-color: #f2f2f2;
+        padding-right: 15px;
+        border: none;
+      }
+      .username-label {
+        font-weight: bold;
+        font-size: 0.8em;
+        color: #16a085;
+        margin-bottom: 5px;
+      }
+      .timestamp {
+        font-size: 0.65em;
+        color: #888;
+        align-self: flex-end;
+        margin-top: 5px;
+      }
+      .chat-image {
+        max-width: 100%;
+        border-radius: 8px;
+        margin-top: 5px;
+      }
+
+      /* --- PRIVATE WHISPER BANNER --- */
+      .private-banner {
+        display: none;
+        background-color: #9b59b6;
+        color: white;
+        padding: 10px 15px;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.9em;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
+        z-index: 5;
+      }
+      .private-banner-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .private-banner-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .banner-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: background 0.2s;
+      }
+      .banner-btn:hover {
+        background: rgba(255, 255, 255, 0.4);
+      }
+      .banner-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0 5px;
+        font-weight: bold;
+      }
+
+      /* --- INPUT AREA --- */
+      .input-area {
+        background-color: #f0f0f0;
+        padding: 12px 15px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 12px 15px;
+        border: none;
+        border-radius: 24px;
+        outline: none;
+        font-size: 16px;
+        min-width: 0;
+      }
+      .icon-btn {
+        cursor: pointer;
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #7f8c8d;
+        padding: 0 5px;
+      }
+      button.send-btn {
+        background-color: #2980b9;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 24px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+      #file-input {
+        display: none;
+      }
+
+      /* --- VIDEO/AUDIO CALL UI --- */
+      #incoming-call-modal {
+        display: none;
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        padding: 20px 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        z-index: 300;
+        text-align: center;
+        border-top: 5px solid #3498db;
+        width: 90%;
+        max-width: 350px;
+        box-sizing: border-box;
+      }
+      .call-btn-group {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 15px;
+      }
+      .accept-btn {
+        background: #2ecc71;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+        flex: 1;
+      }
+      .decline-btn {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+        flex: 1;
+      }
+
+      #call-overlay {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.95);
+        z-index: 200;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .call-header {
+        color: white;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .video-wrapper {
+        position: relative;
+        width: 85%;
+        max-width: 800px;
+        aspect-ratio: 16/9;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+      #remote-video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      #local-video {
+        position: absolute;
+        bottom: 15px;
+        right: 15px;
+        width: 120px;
+        aspect-ratio: 3/4;
+        background: #333;
+        border: 2px solid white;
+        border-radius: 8px;
+        object-fit: cover;
+        transform: scaleX(-1);
+      }
+
+      .audio-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+      }
+      .audio-avatar {
+        width: 150px;
+        height: 150px;
+        background: linear-gradient(135deg, #6dd5ed, #2193b0);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 60px;
+        font-weight: bold;
+        box-shadow: 0 0 0 0 rgba(33, 147, 176, 0.7);
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(33, 147, 176, 0.7);
+        }
+        70% {
+          transform: scale(1);
+          box-shadow: 0 0 0 20px rgba(33, 147, 176, 0);
+        }
+        100% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(33, 147, 176, 0);
+        }
+      }
+      .end-call-btn {
+        margin-top: 30px;
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.3s;
+        z-index: 201;
+      }
+      .end-call-btn:hover {
+        background-color: #c0392b;
+      }
+
+      /* --- MOBILE RESPONSIVE TWEAKS --- */
+      @media (max-width: 768px) {
+        .qr-section {
+          display: none;
+        }
+        .header h2 {
+          font-size: 1.3rem;
+        }
+        .mobile-menu-btn {
+          display: block;
+        }
+        .sidebar {
+          position: absolute;
+          top: 0;
+          left: 0;
+          height: 100%;
+          z-index: 100;
+          transform: translateX(-100%);
+        }
+        .sidebar.open {
+          transform: translateX(0);
+        }
+        .sidebar-overlay.open {
+          display: block;
+        }
+        .message {
+          max-width: 85%;
+        }
+        .input-area {
+          padding: 8px 10px;
+          gap: 8px;
+          padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+        input[type="text"] {
+          padding: 10px 12px;
+        }
+        button.send-btn {
+          padding: 10px 16px;
+        }
+        .video-wrapper {
+          width: 100%;
+          height: 60vh;
+          aspect-ratio: unset;
+          border-radius: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="lobby-container">
+      <div class="lobby-card" id="menu-screen">
+        <h1>NexusNet</h1>
+        <p>Secure, temporary group chats.</p>
+        <button class="btn btn-blue" onclick="showScreen('create-screen')">
+          Create a New Group
+        </button>
+        <button class="btn btn-green" onclick="showScreen('join-screen')">
+          Join Existing Group
+        </button>
+      </div>
+
+      <div class="lobby-card" id="create-screen" style="display: none">
+        <h2>Create Group</h2>
+        <input
+          type="text"
+          id="create-username"
+          class="input-field"
+          placeholder="Enter your name"
+        />
+        <button class="btn btn-blue" onclick="createRoom()">
+          Generate Secret Code
+        </button>
+        <button class="btn btn-gray" onclick="showScreen('menu-screen')">
+          Back
+        </button>
+      </div>
+
+      <div class="lobby-card" id="join-screen" style="display: none">
+        <h2>Join Group</h2>
+        <input
+          type="text"
+          id="join-username"
+          class="input-field"
+          placeholder="Enter your name"
+        />
+        <input
+          type="text"
+          id="join-code"
+          class="input-field"
+          placeholder="5-Digit Secret Code"
+          style="text-transform: uppercase"
+        />
+        <div id="error-msg" class="error-text"></div>
+        <button class="btn btn-green" onclick="joinRoom()">Join Chat</button>
+        <button class="btn btn-gray" onclick="showScreen('menu-screen')">
+          Back
+        </button>
+      </div>
+    </div>
+
+    <div id="app-container">
+      <div class="header">
+        <h2>
+          NexusNet <span class="room-badge" id="display-room-code">----</span>
+        </h2>
+        <div class="header-right">
+          <button class="mobile-menu-btn" onclick="toggleSidebar()">
+            👥 (<span id="mobile-user-count">0</span>)
+          </button>
+          <div class="qr-section">
+            <small
+              >Lobby Link:<br /><a href="{{ app_url }}">{{ app_url }}</a></small
+            >
+            <img
+              src="data:image/png;base64,{{ qr_code }}"
+              alt="QR Code"
+              title="Scan to join!"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="main-container">
+        <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+        <div class="sidebar" id="sidebar">
+          <div class="sidebar-header">
+            Active Users (<span id="user-count">0</span>)<br /><small
+              style="font-weight: normal; color: #555"
+              >Click a name to whisper/call</small
+            >
+          </div>
+          <ul id="user-list"></ul>
+        </div>
+
+        <div class="chat-container">
+          <div id="incoming-call-modal">
+            <h3 style="margin-top: 0; color: #2c3e50">
+              Incoming <span id="incoming-type"></span> Call
+            </h3>
+            <p style="margin: 5px 0 15px 0">
+              from <strong id="incoming-caller" style="color: #2980b9"></strong>
+            </p>
+            <div class="call-btn-group">
+              <button class="accept-btn" onclick="acceptCall()">Accept</button>
+              <button class="decline-btn" onclick="rejectCall()">
+                Decline
+              </button>
+            </div>
+          </div>
+
+          <div id="call-overlay">
+            <div class="call-header">
+              <h2 id="call-status" style="margin: 0">Calling...</h2>
+              <p
+                id="call-target-name"
+                style="margin: 5px 0 0 0; color: #cbd5e1; font-size: 1.2em"
+              ></p>
+            </div>
+            <div id="video-ui" class="video-wrapper" style="display: none">
+              <video id="remote-video" autoplay playsinline></video>
+              <video id="local-video" autoplay playsinline muted></video>
+            </div>
+            <div id="audio-ui" class="audio-wrapper" style="display: none">
+              <div class="audio-avatar" id="audio-avatar-initial">?</div>
+            </div>
+            <button class="end-call-btn" onclick="endCall()" title="End Call">
+              📞
+            </button>
+          </div>
+
+          <div id="chat-box"></div>
+
+          <div id="private-banner" class="private-banner">
+            <div class="private-banner-left">
+              <span>🔒 Whispering to</span>
+              <strong id="private-target-name-banner">User</strong>
+            </div>
+            <div class="private-banner-right">
+              <button
+                class="banner-btn"
+                onclick="initiateCall(false)"
+                title="Voice Call"
+              >
+                📞
+              </button>
+              <button
+                class="banner-btn"
+                onclick="initiateCall(true)"
+                title="Video Call"
+              >
+                📹
+              </button>
+              <button
+                class="banner-close"
+                onclick="cancelPrivateMode()"
+                title="Cancel"
+              >
+                ✖
+              </button>
+            </div>
+          </div>
+
+          <div class="input-area">
+            <button
+              class="icon-btn"
+              onclick="document.getElementById('file-input').click()"
+            >
+              📎
+            </button>
+            <input
+              type="file"
+              id="file-input"
+              accept="image/*"
+              onchange="sendImage(event)"
+            />
+            <input
+              type="text"
+              id="message-input"
+              placeholder="Type a message..."
+              onkeypress="handleKeyPress(event)"
+              autocomplete="off"
+            />
+            <button class="send-btn" onclick="sendMessage()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const socket = io();
+
+      const chatBox = document.getElementById("chat-box");
+      const messageInput = document.getElementById("message-input");
+      const userList = document.getElementById("user-list");
+      const privateBanner = document.getElementById("private-banner");
+      const privateTargetNameBanner = document.getElementById(
+        "private-target-name-banner",
+      );
+
+      let myUsername = "";
+      let currentPrivateTarget = null;
+
+      // --- LOBBY LOGIC ---
+      function showScreen(screenId) {
+        document.getElementById("menu-screen").style.display = "none";
+        document.getElementById("create-screen").style.display = "none";
+        document.getElementById("join-screen").style.display = "none";
+        document.getElementById("error-msg").innerText = "";
+        document.getElementById(screenId).style.display = "block";
+      }
+
+      function createRoom() {
+        myUsername = document.getElementById("create-username").value.trim();
+        if (!myUsername) return alert("Please enter a name");
+        socket.emit("create_room", { username: myUsername });
+      }
+
+      function joinRoom() {
+        myUsername = document.getElementById("join-username").value.trim();
+        const code = document
+          .getElementById("join-code")
+          .value.trim()
+          .toUpperCase();
+        if (!myUsername || !code) return alert("Please enter name and code");
+        socket.emit("join_room", { username: myUsername, room_code: code });
+      }
+
+      socket.on("room_joined", (data) => {
+        document.getElementById("lobby-container").style.display = "none";
+        document.getElementById("app-container").style.display = "flex";
+        document.getElementById("display-room-code").innerText = data.room_code;
+        updateUserList(data.users);
+      });
+
+      socket.on("error_message", (data) => {
+        document.getElementById("error-msg").innerText = data.message;
+      });
+
+      socket.on("room_terminated", () => {
+        alert(
+          "The Admin has left. This group is now terminated and permanently deleted.",
+        );
+        window.location.reload();
+      });
+
+      // --- CHAT LOGIC ---
+      function toggleSidebar() {
+        document.getElementById("sidebar").classList.toggle("open");
+        document.querySelector(".sidebar-overlay").classList.toggle("open");
+      }
+
+      socket.on("update_users", (users) => {
+        updateUserList(users);
+      });
+
+      function updateUserList(users) {
+        userList.innerHTML = "";
+        document.getElementById("user-count").textContent = users.length;
+        document.getElementById("mobile-user-count").textContent = users.length;
+
+        users.forEach((user) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<div class="online-dot"></div> ${user === myUsername ? user + " (You)" : user}`;
+          if (user !== myUsername) {
+            li.onclick = () => {
+              currentPrivateTarget = user;
+              messageInput.placeholder = `Message ${user}...`;
+              privateTargetNameBanner.innerText = user;
+              privateBanner.style.display = "flex";
+              messageInput.focus();
+              if (window.innerWidth <= 768) toggleSidebar();
+            };
+          }
+          userList.appendChild(li);
+        });
+
+        if (currentPrivateTarget && !users.includes(currentPrivateTarget))
+          cancelPrivateMode();
+      }
+
+      function cancelPrivateMode() {
+        currentPrivateTarget = null;
+        messageInput.placeholder = "Type a message...";
+        privateBanner.style.display = "none";
+      }
+
+      socket.on("receive_message", (data) => {
+        const messageDiv = document.createElement("div");
+        if (data.id) messageDiv.id = data.id;
+        const timeString = new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        if (data.user === "System") {
+          messageDiv.className = "message system";
+          messageDiv.innerHTML = `${data.text} <span class="timestamp">${timeString}</span>`;
+        } else {
+          messageDiv.className =
+            data.user === myUsername ? "message me" : "message other";
+          if (data.is_private) messageDiv.classList.add("private");
+
+          let contentHTML = `<span class="username-label">${data.user}</span>`;
+          if (data.is_private) {
+            const targetText =
+              data.user === myUsername ? `to ${data.target}` : `to You`;
+            contentHTML += `<span class="private-label">(Whisper ${targetText})</span>`;
+          }
+
+          if (data.text) contentHTML += `<div>${data.text}</div>`;
+          if (data.image)
+            contentHTML += `<img src="${data.image}" class="chat-image">`;
+          if (data.user === myUsername && data.id) {
+            contentHTML += `<button class="delete-btn" onclick="deleteMessage('${data.id}')" title="Delete Message">🗑️</button>`;
+          }
+          contentHTML += `<span class="timestamp">${timeString}</span>`;
+          messageDiv.innerHTML = contentHTML;
+        }
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+
+      socket.on("message_deleted", (data) => {
+        const msgDiv = document.getElementById(data.id);
+        if (msgDiv) {
+          msgDiv.classList.add("deleted");
+          msgDiv.classList.remove("me", "other", "private");
+          msgDiv.innerHTML = `🚫 <em>This message was deleted</em> <span class="timestamp">${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>`;
+        }
+      });
+
+      function deleteMessage(msgId) {
+        if (confirm("Delete this message for everyone?"))
+          socket.emit("delete_message", { id: msgId });
+      }
+
+      function sendMessage() {
+        const text = messageInput.value.trim();
+        if (text !== "") {
+          const payload = { user: myUsername, text: text };
+          if (currentPrivateTarget) {
+            payload.target = currentPrivateTarget;
+            socket.emit("private_message", payload);
+          } else {
+            socket.emit("send_message", payload);
+          }
+          messageInput.value = "";
+          messageInput.focus();
+        }
+      }
+
+      function sendImage(event) {
+        const file = event.target.files[0];
+        if (
+          file &&
+          file.size <= 10 * 1024 * 1024 &&
+          file.type.startsWith("image/")
+        ) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const payload = {
+              user: myUsername,
+              text: "",
+              image: e.target.result,
+            };
+            if (currentPrivateTarget) {
+              payload.target = currentPrivateTarget;
+              socket.emit("private_message", payload);
+            } else {
+              socket.emit("send_message", payload);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+        event.target.value = "";
+      }
+
+      function handleKeyPress(event) {
+        if (event.key === "Enter") sendMessage();
+      }
+
+      // --- WEBRTC VIDEO/AUDIO CALL LOGIC ---
+      let peerConnection;
+      let localStream;
+      const remoteVideo = document.getElementById("remote-video");
+      const localVideo = document.getElementById("local-video");
+      const callOverlay = document.getElementById("call-overlay");
+      const callStatus = document.getElementById("call-status");
+      const callTargetName = document.getElementById("call-target-name");
+
+      let activeCallTarget = null;
+      let isVideoCallActive = false;
+      let incomingOfferData = null;
+      let callTimerInterval = null;
+      let callSeconds = 0;
+
+      const rtcConfig = {
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      };
+
+      function startCallTimer() {
+        callSeconds = 0;
+        clearInterval(callTimerInterval);
+        callTimerInterval = setInterval(() => {
+          callSeconds++;
+          const m = String(Math.floor(callSeconds / 60)).padStart(2, "0");
+          const s = String(callSeconds % 60).padStart(2, "0");
+          callStatus.innerText = `${m}:${s}`;
+        }, 1000);
+      }
+
+      function setupCallUI(isVideo, targetUser) {
+        isVideoCallActive = isVideo;
+        callTargetName.innerText = targetUser;
+        callOverlay.style.display = "flex";
+
+        if (isVideo) {
+          document.getElementById("video-ui").style.display = "block";
+          document.getElementById("audio-ui").style.display = "none";
+        } else {
+          document.getElementById("video-ui").style.display = "none";
+          document.getElementById("audio-ui").style.display = "flex";
+          document.getElementById("audio-avatar-initial").innerText = targetUser
+            .charAt(0)
+            .toUpperCase();
+        }
+      }
+
+      async function initiateCall(videoEnabled) {
+        if (!currentPrivateTarget) return;
+        activeCallTarget = currentPrivateTarget;
+
+        setupCallUI(videoEnabled, activeCallTarget);
+        callStatus.innerText = `Calling...`;
+
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: isVideoCallActive,
+            audio: true,
+          });
+          if (isVideoCallActive) localVideo.srcObject = localStream;
+
+          setupPeerConnection();
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+
+          socket.emit("webrtc_signal", {
+            target: activeCallTarget,
+            type: "offer",
+            offer: offer,
+            caller: myUsername,
+            isVideoCall: isVideoCallActive,
+          });
+        } catch (error) {
+          alert("Could not access camera/microphone.");
+          endCall();
+        }
+      }
+
+      function setupPeerConnection() {
+        peerConnection = new RTCPeerConnection(rtcConfig);
+
+        localStream
+          .getTracks()
+          .forEach((track) => peerConnection.addTrack(track, localStream));
+
+        peerConnection.ontrack = (event) => {
+          if (remoteVideo.srcObject !== event.streams[0]) {
+            remoteVideo.srcObject = event.streams[0];
+          }
+          remoteVideo.play().catch((e) => console.log("Autoplay blocked:", e));
+          if (!callTimerInterval) startCallTimer();
+        };
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("webrtc_signal", {
+              target: activeCallTarget,
+              type: "candidate",
+              candidate: event.candidate,
+              caller: myUsername,
+            });
+          }
+        };
+      }
+
+      socket.on("webrtc_signal", async (data) => {
+        if (data.type === "offer") {
+          incomingOfferData = data;
+          document.getElementById("incoming-type").innerText = data.isVideoCall
+            ? "Video"
+            : "Voice";
+          document.getElementById("incoming-caller").innerText = data.caller;
+          document.getElementById("incoming-call-modal").style.display =
+            "block";
+        } else if (data.type === "answer" && peerConnection) {
+          await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(data.answer),
+          );
+        } else if (data.type === "candidate" && peerConnection) {
+          await peerConnection.addIceCandidate(
+            new RTCIceCandidate(data.candidate),
+          );
+        } else if (data.type === "end_call") {
+          cleanupCall();
+        } else if (data.type === "call_rejected") {
+          alert(`${data.caller} declined the call.`);
+          cleanupCall();
+        }
+      });
+
+      async function acceptCall() {
+        document.getElementById("incoming-call-modal").style.display = "none";
+        activeCallTarget = incomingOfferData.caller;
+
+        setupCallUI(incomingOfferData.isVideoCall, activeCallTarget);
+        callStatus.innerText = `Connecting...`;
+
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: isVideoCallActive,
+            audio: true,
+          });
+          if (isVideoCallActive) localVideo.srcObject = localStream;
+
+          setupPeerConnection();
+          await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(incomingOfferData.offer),
+          );
+
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+
+          socket.emit("webrtc_signal", {
+            target: activeCallTarget,
+            type: "answer",
+            answer: answer,
+            caller: myUsername,
+          });
+        } catch (e) {
+          alert("Could not access media.");
+          endCall();
+        }
+      }
+
+      function rejectCall() {
+        document.getElementById("incoming-call-modal").style.display = "none";
+        socket.emit("webrtc_signal", {
+          target: incomingOfferData.caller,
+          type: "call_rejected",
+          caller: myUsername,
+        });
+        incomingOfferData = null;
+      }
+
+      function endCall() {
+        if (activeCallTarget)
+          socket.emit("webrtc_signal", {
+            target: activeCallTarget,
+            type: "end_call",
+          });
+        cleanupCall();
+      }
+
+      function cleanupCall() {
+        if (peerConnection) {
+          peerConnection.close();
+          peerConnection = null;
+        }
+        if (localStream) {
+          localStream.getTracks().forEach((track) => track.stop());
+          localStream = null;
+        }
+
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+        callSeconds = 0;
+
+        callOverlay.style.display = "none";
+        document.getElementById("incoming-call-modal").style.display = "none";
+        document.getElementById("video-ui").style.display = "none";
+        document.getElementById("audio-ui").style.display = "none";
+
+        remoteVideo.srcObject = null;
+        localVideo.srcObject = null;
+        activeCallTarget = null;
+        incomingOfferData = null;
+      }
+    </script>
+  </body>
+</html>
