@@ -1,20 +1,32 @@
+# app.py
 import qrcode
 import base64
 import uuid
 import random
 import string
+import os
 from io import BytesIO
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room, leave_room, close_room
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'super_secret_nexus_key' 
-# cors_allowed_origins="*" is strictly required for cloud hosting
-socketio = SocketIO(app, max_http_buffer_size=10 * 1024 * 1024, cors_allowed_origins="*")
+# Use environment variable for secret key in production
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'super_secret_nexus_key')
 
-# Database to track rooms and users
+# Render.com specific: Use eventlet for WebSocket support
+socketio = SocketIO(
+    app, 
+    max_http_buffer_size=10 * 1024 * 1024, 
+    cors_allowed_origins="*",
+    async_mode='eventlet',
+    ping_timeout=60,
+    ping_interval=25
+)
+
+# Database to track rooms, users, and active group calls
 active_rooms = {}
 user_room_map = {} 
+active_group_calls = {}
 
 def generate_room_code(length=5):
     while True:
@@ -24,10 +36,9 @@ def generate_room_code(length=5):
 
 @app.route('/')
 def index():
-    # Automatically grabs your live Render domain (e.g., https://your-app.onrender.com)
-    app_url = request.url_root.rstrip('/') 
+    # Render automatically provides HTTPS URL
+    app_url = request.url_root.rstrip('/')
     
-    # Generate the QR Code for the Lobby
     qr = qrcode.QRCode(version=1, box_size=4, border=2)
     qr.add_data(app_url)
     qr.make(fit=True)
@@ -48,13 +59,23 @@ def handle_create_room(data):
     
     active_rooms[room_code] = {
         "creator": request.sid,
+        "creator_name": username,
         "users": {request.sid: username}
     }
     user_room_map[request.sid] = room_code
     join_room(room_code)
     
-    emit('room_joined', {'room_code': room_code, 'users': list(active_rooms[room_code]['users'].values())})
-    emit('receive_message', {'user': 'System', 'text': f'Room created successfully! Share code: {room_code}'}, to=room_code)
+    emit('room_joined', {
+        'room_code': room_code, 
+        'users': list(active_rooms[room_code]['users'].values()),
+        'is_host': True,
+        'host_name': username
+    })
+    emit('receive_message', {
+        'user': 'System', 
+        'text': f'Room created successfully! Share code: {room_code}',
+        'type': 'system'
+    }, to=room_code)
 
 @socketio.on('join_room')
 def handle_join_room(data):
@@ -73,9 +94,25 @@ def handle_join_room(data):
     user_room_map[request.sid] = room_code
     join_room(room_code)
     
-    emit('room_joined', {'room_code': room_code, 'users': list(active_rooms[room_code]['users'].values())})
-    emit('update_users', list(active_rooms[room_code]['users'].values()), to=room_code)
-    emit('receive_message', {'user': 'System', 'text': f'{username} has joined the chat!'}, to=room_code)
+    is_host = active_rooms[room_code]['creator'] == request.sid
+    
+    emit('room_joined', {
+        'room_code': room_code, 
+        'users': list(active_rooms[room_code]['users'].values()),
+        'is_host': is_host,
+        'host_name': active_rooms[room_code]['creator_name']
+    })
+    
+    emit('update_users', {
+        'users': list(active_rooms[room_code]['users'].values()),
+        'host_sid': active_rooms[room_code]['creator']
+    }, to=room_code)
+    
+    emit('receive_message', {
+        'user': 'System', 
+        'text': f'{username} has joined the chat!',
+        'type': 'system'
+    }, to=room_code)
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -84,26 +121,181 @@ def handle_disconnect():
     if room_code and room_code in active_rooms:
         username = active_rooms[room_code]['users'].get(request.sid)
         
+        # Clean up group call participation
+        if room_code in active_group_calls:
+            if request.sid in active_group_calls[room_code]['participants']:
+                active_group_calls[room_code]['participants'].remove(request.sid)
+                emit('group_call_user_left', {'sid': request.sid, 'username': username}, to=room_code)
+                if len(active_group_calls[room_code]['participants']) == 0:
+                    del active_group_calls[room_code]
+        
         # SELF DESTRUCT: If the creator leaves, destroy the room
         if active_rooms[room_code]['creator'] == request.sid:
             emit('room_terminated', to=room_code) 
             close_room(room_code) 
-            del active_rooms[room_code] 
+            del active_rooms[room_code]
+            if room_code in active_group_calls:
+                del active_group_calls[room_code]
         else:
             if request.sid in active_rooms[room_code]['users']:
                 del active_rooms[room_code]['users'][request.sid]
-            emit('update_users', list(active_rooms[room_code]['users'].values()), to=room_code)
-            emit('receive_message', {'user': 'System', 'text': f'{username} has disconnected.'}, to=room_code)
+            emit('update_users', {
+                'users': list(active_rooms[room_code]['users'].values()),
+                'host_sid': active_rooms[room_code]['creator']
+            }, to=room_code)
+            emit('receive_message', {
+                'user': 'System', 
+                'text': f'{username} has disconnected.',
+                'type': 'system'
+            }, to=room_code)
         
-        del user_room_map[request.sid]
+        if request.sid in user_room_map:
+            del user_room_map[request.sid]
 
-# --- CHAT & WEBRTC LOGIC ---
+# --- HOST CONTROLS: KICK USER ---
+
+@socketio.on('kick_user')
+def handle_kick_user(data):
+    room_code = user_room_map.get(request.sid)
+    if not room_code or room_code not in active_rooms:
+        return
+    
+    # Verify host
+    if active_rooms[room_code]['creator'] != request.sid:
+        emit('error_message', {'message': 'Only the host can remove users.'})
+        return
+    
+    target_username = data.get('username')
+    target_sid = None
+    
+    for sid, uname in active_rooms[room_code]['users'].items():
+        if uname == target_username:
+            target_sid = sid
+            break
+    
+    if target_sid:
+        emit('kicked', {'message': 'You have been removed from the room by the host.'}, to=target_sid)
+        leave_room(room_code, sid=target_sid)
+        
+        if target_sid in active_rooms[room_code]['users']:
+            del active_rooms[room_code]['users'][target_sid]
+        
+        if target_sid in user_room_map:
+            del user_room_map[target_sid]
+        
+        emit('receive_message', {
+            'user': 'System',
+            'text': f'{target_username} was removed by the host.',
+            'type': 'system'
+        }, to=room_code)
+        
+        emit('update_users', {
+            'users': list(active_rooms[room_code]['users'].values()),
+            'host_sid': active_rooms[room_code]['creator']
+        }, to=room_code)
+
+# --- GROUP CALL LOGIC ---
+
+@socketio.on('start_group_call')
+def handle_start_group_call(data):
+    room_code = user_room_map.get(request.sid)
+    if not room_code or room_code not in active_rooms:
+        return
+    
+    # Only host can start group calls
+    if active_rooms[room_code]['creator'] != request.sid:
+        return
+    
+    call_type = data.get('call_type', 'video')
+    
+    active_group_calls[room_code] = {
+        'type': call_type,
+        'participants': [request.sid],
+        'host': request.sid
+    }
+    
+    emit('group_call_started', {
+        'call_type': call_type,
+        'host_sid': request.sid,
+        'host_name': active_rooms[room_code]['creator_name']
+    }, to=room_code)
+
+@socketio.on('join_group_call')
+def handle_join_group_call(data):
+    room_code = user_room_map.get(request.sid)
+    if not room_code or room_code not in active_group_calls:
+        return
+    
+    if request.sid not in active_group_calls[room_code]['participants']:
+        active_group_calls[room_code]['participants'].append(request.sid)
+    
+    # Notify existing participants to create offers for this new peer (mesh topology)
+    for participant_sid in active_group_calls[room_code]['participants']:
+        if participant_sid != request.sid:
+            emit('group_call_new_peer', {
+                'new_peer_sid': request.sid,
+                'new_peer_name': active_rooms[room_code]['users'][request.sid]
+            }, to=participant_sid)
+    
+    emit('group_call_joined', {
+        'participants': [
+            {'sid': sid, 'name': active_rooms[room_code]['users'][sid]}
+            for sid in active_group_calls[room_code]['participants']
+            if sid != request.sid
+        ],
+        'call_type': active_group_calls[room_code]['type']
+    }, to=request.sid)
+
+@socketio.on('leave_group_call')
+def handle_leave_group_call(data):
+    room_code = user_room_map.get(request.sid)
+    if not room_code or room_code not in active_group_calls:
+        return
+    
+    if request.sid in active_group_calls[room_code]['participants']:
+        active_group_calls[room_code]['participants'].remove(request.sid)
+        username = active_rooms[room_code]['users'].get(request.sid, 'Unknown')
+        emit('group_call_user_left', {'sid': request.sid, 'username': username}, to=room_code)
+        
+        if len(active_group_calls[room_code]['participants']) == 0:
+            del active_group_calls[room_code]
+
+@socketio.on('end_group_call')
+def handle_end_group_call(data):
+    room_code = user_room_map.get(request.sid)
+    if not room_code or room_code not in active_group_calls:
+        return
+    
+    # Only host can end the group call
+    if active_group_calls[room_code]['host'] != request.sid:
+        return
+    
+    emit('group_call_ended', {'by': 'host'}, to=room_code)
+    del active_group_calls[room_code]
+
+@socketio.on('group_webrtc_signal')
+def handle_group_webrtc_signal(data):
+    room_code = user_room_map.get(request.sid)
+    if not room_code or room_code not in active_group_calls:
+        return
+    
+    target_sid = data.get('target_sid')
+    if target_sid and target_sid in active_group_calls[room_code]['participants']:
+        emit('group_webrtc_signal', {
+            'sender_sid': request.sid,
+            'sender_name': active_rooms[room_code]['users'].get(request.sid, 'Unknown'),
+            'signal': data.get('signal'),
+            'type': data.get('type')
+        }, to=target_sid)
+
+# --- CHAT & PRIVATE WEBRTC LOGIC ---
 
 @socketio.on('send_message')
 def handle_message(data):
     room_code = user_room_map.get(request.sid)
     if room_code:
         data['id'] = str(uuid.uuid4())
+        data['timestamp'] = data.get('timestamp', '')
         emit('receive_message', data, to=room_code)
 
 @socketio.on('private_message')
@@ -114,6 +306,7 @@ def handle_private_message(data):
     target_username = data.get('target')
     data['id'] = str(uuid.uuid4())
     data['is_private'] = True 
+    data['timestamp'] = data.get('timestamp', '')
     
     target_sid = None
     for sid, uname in active_rooms[room_code]['users'].items():
@@ -125,7 +318,11 @@ def handle_private_message(data):
         emit('receive_message', data, room=target_sid)
         emit('receive_message', data, room=request.sid)
     else:
-        emit('receive_message', {'user': 'System', 'text': f"Could not deliver. {target_username} is no longer online."}, room=request.sid)
+        emit('receive_message', {
+            'user': 'System', 
+            'text': f"Could not deliver. {target_username} is no longer online.",
+            'type': 'system'
+        }, room=request.sid)
 
 @socketio.on('webrtc_signal')
 def handle_webrtc_signal(data):
@@ -149,4 +346,6 @@ def handle_delete(data):
     if room_code:
         emit('message_deleted', data, to=room_code)
 
-# Notice there is no app.run() here! Cloud providers use a different engine to start the file.
+# Render.com requires this specific setup
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
