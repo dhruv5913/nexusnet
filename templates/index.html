@@ -1433,6 +1433,9 @@
       let localStream = null;
       let remoteStream = null;
       let peerConnection = null;
+      let currentCallType = null; // "video" or "audio"
+      let currentCallTarget = null;
+      let isCallInitiator = false;
 
       // Group call state
       let groupCallActive = false;
@@ -1451,6 +1454,8 @@
           { urls: "stun:stun1.l.google.com:19302" },
         ],
       };
+
+      const MAX_GROUP_CALL_PARTICIPANTS = 4;
 
       // ---------- LOBBY ----------
       function showScreen(screenId) {
