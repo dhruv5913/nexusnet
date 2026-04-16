@@ -17,8 +17,8 @@ socketio = SocketIO(
     max_http_buffer_size=10 * 1024 * 1024,
     cors_allowed_origins="*",
     async_mode='eventlet',
-    ping_timeout=90,  # Increased from 60
-    ping_interval=30,  # Increased from 25
+    ping_timeout=90,
+    ping_interval=30,
     logger=True,
     engineio_logger=True
 )
@@ -29,8 +29,9 @@ active_group_calls = {}
 MAX_GROUP_CALL_PARTICIPANTS = 4
 
 def generate_room_code(length=5):
+    """Generate a numeric-only room code."""
     while True:
-        code = "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+        code = "".join(random.choices(string.digits, k=length))
         if code not in active_rooms:
             return code
 
@@ -46,7 +47,7 @@ def index():
     qr_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return render_template('index.html', app_url=app_url, qr_code=qr_base64)
 
-# ---------- HEARTBEAT / KEEPALIVE ----------
+# ---------- HEARTBEAT ----------
 @socketio.on('ping')
 def handle_ping():
     emit('pong')
@@ -112,7 +113,6 @@ def handle_disconnect():
     room_code = user_room_map.get(request.sid)
     if room_code and room_code in active_rooms:
         username = active_rooms[room_code]['users'].get(request.sid, 'Unknown')
-        # Remove from group call if present
         if room_code in active_group_calls and request.sid in active_group_calls[room_code]['participants']:
             active_group_calls[room_code]['participants'].remove(request.sid)
             emit('user_left_group_call', {
@@ -122,7 +122,6 @@ def handle_disconnect():
             }, to=room_code)
             if len(active_group_calls[room_code]['participants']) == 0:
                 del active_group_calls[room_code]
-        # If host leaves, destroy room
         if active_rooms[room_code]['creator'] == request.sid:
             emit('room_terminated', to=room_code)
             close_room(room_code)
@@ -310,14 +309,12 @@ def handle_join_group_call(data):
         return
     if request.sid not in call['participants']:
         call['participants'].append(request.sid)
-    # Tell existing participants about the new peer
     for sid in call['participants']:
         if sid != request.sid:
             emit('group_call_new_peer', {
                 'peer_sid': request.sid,
                 'peer_name': active_rooms[room_code]['users'][request.sid]
             }, to=sid)
-    # Send the new participant the list of existing participants
     participants_list = [
         {'sid': sid, 'name': active_rooms[room_code]['users'][sid]}
         for sid in call['participants'] if sid != request.sid
@@ -326,7 +323,6 @@ def handle_join_group_call(data):
         'participants': participants_list,
         'call_type': call['type']
     }, to=request.sid)
-    # Notify all about participant count update
     emit('user_joined_group_call', {
         'participant_count': len(call['participants']),
         'max_participants': call['max_participants']
