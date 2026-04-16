@@ -116,6 +116,13 @@
       .btn-gray:hover {
         background-color: #7f8c8d;
       }
+      .btn-red {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      }
+      .btn-red:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
+      }
       .error-text {
         color: #e74c3c;
         font-size: 14px;
@@ -671,13 +678,14 @@
         bottom: 20px;
         right: 20px;
         width: 150px;
-        aspect-ratio: 3/4;
+        height: 200px;
         background: #333;
         border: 3px solid white;
         border-radius: 12px;
         object-fit: cover;
         transform: scaleX(-1);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        z-index: 10;
       }
 
       .audio-wrapper {
@@ -752,6 +760,7 @@
         align-items: center;
         gap: 15px;
         animation: slideDown 0.5s ease-out;
+        max-width: 90%;
       }
       .join-group-btn {
         background: white;
@@ -765,6 +774,12 @@
       }
       .join-group-btn:hover {
         transform: scale(1.05);
+      }
+      .join-group-btn:disabled {
+        background: #ccc;
+        color: #666;
+        cursor: not-allowed;
+        transform: none;
       }
       #group-call-overlay {
         display: none;
@@ -789,11 +804,16 @@
       .group-call-grid {
         flex: 1;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 15px;
         padding: 20px;
         overflow-y: auto;
-        align-content: start;
+        align-content: center;
+        justify-content: center;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
       }
       .group-call-video {
         background: #000;
@@ -802,6 +822,7 @@
         position: relative;
         aspect-ratio: 16/9;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        min-height: 200px;
       }
       .group-call-video video {
         width: 100%;
@@ -818,6 +839,25 @@
         border-radius: 20px;
         font-size: 0.9em;
         font-weight: 600;
+        z-index: 5;
+      }
+      .group-call-video .remove-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 0.75em;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+        z-index: 10;
+      }
+      .group-call-video:hover .remove-btn {
+        opacity: 1;
       }
       .group-call-audio {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -831,6 +871,7 @@
         font-size: 3em;
         position: relative;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        min-height: 200px;
       }
       .group-call-controls {
         background: rgba(0, 0, 0, 0.5);
@@ -839,6 +880,7 @@
         justify-content: center;
         gap: 20px;
         padding-bottom: max(20px, env(safe-area-inset-bottom));
+        flex-wrap: wrap;
       }
       .control-btn {
         width: 60px;
@@ -867,6 +909,86 @@
       }
       .control-btn.mute {
         background: #f39c12;
+      }
+      .control-btn.record {
+        background: #e74c3c;
+        position: relative;
+      }
+      .control-btn.record.recording {
+        background: #c0392b;
+        animation: pulse-record 1.5s infinite;
+      }
+      @keyframes pulse-record {
+        0% {
+          box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 15px rgba(231, 76, 60, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+        }
+      }
+      .control-btn.video {
+        background: #3498db;
+      }
+      .participant-count {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        margin-right: 15px;
+      }
+
+      /* --- RECORDING MODAL --- */
+      #recording-modal {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        z-index: 400;
+        text-align: center;
+        max-width: 90%;
+        width: 400px;
+      }
+      #recording-modal h3 {
+        margin-top: 0;
+        color: #2c3e50;
+      }
+      .recording-preview {
+        width: 100%;
+        max-height: 300px;
+        border-radius: 10px;
+        margin: 15px 0;
+        background: #000;
+      }
+      .modal-btn-group {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 20px;
+      }
+      .modal-btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+      .modal-btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+      .modal-btn-secondary {
+        background: #95a5a6;
+        color: white;
       }
 
       /* --- MOBILE RESPONSIVE TWEAKS --- */
@@ -917,17 +1039,31 @@
         }
         #local-video {
           width: 100px;
+          height: 133px;
           bottom: 10px;
           right: 10px;
         }
         .group-call-grid {
           grid-template-columns: 1fr;
+          grid-template-rows: auto;
           gap: 10px;
           padding: 10px;
+        }
+        .group-call-video,
+        .group-call-audio {
+          min-height: 150px;
         }
         .credits {
           font-size: 0.8em;
           padding: 0 20px;
+        }
+        .group-call-controls {
+          gap: 10px;
+        }
+        .control-btn {
+          width: 50px;
+          height: 50px;
+          font-size: 20px;
         }
       }
     </style>
@@ -1065,10 +1201,27 @@
         <div class="chat-container">
           <!-- Group Call Notification -->
           <div id="group-call-notification" class="group-call-notification">
-            <span>📞 Group call in progress</span>
-            <button class="join-group-btn" onclick="joinGroupCall()">
-              Join
-            </button>
+            <div
+              style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+              "
+            >
+              <span
+                >📞 Group call in progress (<span id="call-participant-count"
+                  >1</span
+                >/<span id="max-participants">4</span>)</span
+              >
+              <button
+                class="join-group-btn"
+                id="join-group-btn"
+                onclick="joinGroupCall()"
+              >
+                Join
+              </button>
+            </div>
           </div>
 
           <!-- Private Call Modal -->
@@ -1117,8 +1270,13 @@
                   >Video Call</small
                 >
               </div>
-              <div style="color: white; font-weight: bold">
-                <span id="group-call-timer">00:00</span>
+              <div style="display: flex; align-items: center">
+                <span class="participant-count" id="group-participant-count"
+                  >1/4</span
+                >
+                <div style="color: white; font-weight: bold">
+                  <span id="group-call-timer">00:00</span>
+                </div>
               </div>
             </div>
             <div id="group-call-grid" class="group-call-grid">
@@ -1133,11 +1291,51 @@
                 🎤
               </button>
               <button
+                class="control-btn video"
+                onclick="toggleVideo()"
+                title="Camera On/Off"
+                id="video-toggle-btn"
+              >
+                📹
+              </button>
+              <button
+                class="control-btn record"
+                onclick="toggleRecording()"
+                title="Start/Stop Recording"
+                id="record-btn"
+              >
+                ⏺️
+              </button>
+              <button
                 class="control-btn end"
                 onclick="leaveGroupCall()"
                 title="Leave Call"
               >
                 📞
+              </button>
+            </div>
+          </div>
+
+          <!-- Recording Preview Modal -->
+          <div id="recording-modal">
+            <h3>Recording Preview</h3>
+            <video
+              id="recording-preview"
+              class="recording-preview"
+              controls
+            ></video>
+            <div class="modal-btn-group">
+              <button
+                class="modal-btn modal-btn-primary"
+                onclick="downloadRecording()"
+              >
+                Download
+              </button>
+              <button
+                class="modal-btn modal-btn-secondary"
+                onclick="closeRecordingModal()"
+              >
+                Close
               </button>
             </div>
           </div>
@@ -1205,7 +1403,13 @@
     </div>
 
     <script>
-      const socket = io();
+      const socket = io({
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
+
       const chatBox = document.getElementById("chat-box");
       const messageInput = document.getElementById("message-input");
       const userList = document.getElementById("user-list");
@@ -1229,7 +1433,8 @@
         document.getElementById("error-msg").innerText = "";
         document.getElementById(screenId).style.display = "block";
         if (screenId !== "menu-screen") {
-          document.querySelector(`#${screenId} input`).focus();
+          const input = document.querySelector(`#${screenId} input`);
+          if (input) input.focus();
         }
       }
 
@@ -1262,6 +1467,10 @@
         }
         socket.emit("join_room", { username: myUsername, room_code: code });
       }
+
+      socket.on("connect", () => {
+        console.log("Connected to server with SID:", socket.id);
+      });
 
       socket.on("room_joined", (data) => {
         currentRoomCode = data.room_code;
@@ -1315,15 +1524,13 @@
         users.forEach((user) => {
           const li = document.createElement("li");
           const isMe = user === myUsername;
-          const isHostUser =
-            user === activeRoomsHostName() ||
-            (userList.querySelectorAll("li").length === 0 && isHost);
+          const isHostUser = user === activeRoomsHostName();
 
           let html = `<div class="online-dot"></div>
                      <div class="user-info">
                        <div class="user-name">
                          ${user} ${isMe ? "(You)" : ""} 
-                         ${user === activeRoomsHostName() ? '<span class="host-badge-small">HOST</span>' : ""}
+                         ${isHostUser ? '<span class="host-badge-small">HOST</span>' : ""}
                        </div>
                        <div class="user-status">Online</div>
                      </div>`;
@@ -1354,7 +1561,6 @@
       }
 
       function activeRoomsHostName() {
-        // This is tracked via the hostSid from server
         const hostEl = Array.from(userList.querySelectorAll("li")).find((li) =>
           li.querySelector(".host-badge-small"),
         );
@@ -1406,16 +1612,68 @@
           if (data.text)
             contentHTML += `<div style="line-height: 1.4;">${escapeHtml(data.text)}</div>`;
           if (data.image)
-            contentHTML += `<img src="${data.image}" class="chat-image" onclick="window.open(this.src)">`;
-          if (isMe && data.id) {
-            contentHTML += `<button class="delete-btn" onclick="deleteMessage('${data.id}')" title="Delete for everyone">🗑️</button>`;
+            contentHTML += `<img src="${data.image}" class="chat-image" onclick="window.open('${data.image}', '_blank')" />`;
+
+          if (isMe && !data.is_deleted) {
+            contentHTML += `<button class="delete-btn" onclick="deleteMessage('${data.id}')" title="Delete">🗑️</button>`;
           }
+
           contentHTML += `<span class="timestamp">${timeString}</span>`;
           messageDiv.innerHTML = contentHTML;
         }
+
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
       });
+
+      socket.on("message_deleted", (data) => {
+        const msg = document.getElementById(data.message_id);
+        if (msg) {
+          msg.className = "message deleted";
+          msg.innerHTML = `<span class="timestamp">${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span> Message deleted`;
+        }
+      });
+
+      function sendMessage() {
+        const text = messageInput.value.trim();
+        if (!text) return;
+
+        const isPrivate = !!currentPrivateTarget;
+        socket.emit("send_message", {
+          text: text,
+          target: currentPrivateTarget,
+          is_private: isPrivate,
+        });
+
+        messageInput.value = "";
+      }
+
+      function sendImage(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const isPrivate = !!currentPrivateTarget;
+          socket.emit("send_message", {
+            image: e.target.result,
+            target: currentPrivateTarget,
+            is_private: isPrivate,
+          });
+        };
+        reader.readAsDataURL(file);
+        event.target.value = "";
+      }
+
+      function deleteMessage(msgId) {
+        if (confirm("Delete this message?")) {
+          socket.emit("delete_message", { message_id: msgId });
+        }
+      }
+
+      function handleKeyPress(e) {
+        if (e.key === "Enter") sendMessage();
+      }
 
       function escapeHtml(text) {
         const div = document.createElement("div");
@@ -1423,285 +1681,153 @@
         return div.innerHTML;
       }
 
-      socket.on("message_deleted", (data) => {
-        const msgDiv = document.getElementById(data.id);
-        if (msgDiv) {
-          msgDiv.className = "message deleted system";
-          msgDiv.innerHTML = `🚫 <em>This message was deleted</em> <span class="timestamp">${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>`;
-        }
-      });
+      // --- PRIVATE CALL LOGIC (WebRTC) ---
+      let localStream = null;
+      let remoteStream = null;
+      let peerConnection = null;
+      let currentCallType = null;
+      let currentCallTarget = null;
+      let isCallInitiator = false;
 
-      function deleteMessage(msgId) {
-        if (confirm("Delete this message for everyone?")) {
-          socket.emit("delete_message", { id: msgId });
-        }
-      }
-
-      function sendMessage() {
-        const text = messageInput.value.trim();
-        if (text !== "") {
-          const payload = {
-            user: myUsername,
-            text: text,
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          };
-          if (currentPrivateTarget) {
-            payload.target = currentPrivateTarget;
-            socket.emit("private_message", payload);
-          } else {
-            socket.emit("send_message", payload);
-          }
-          messageInput.value = "";
-          messageInput.focus();
-        }
-      }
-
-      function sendImage(event) {
-        const file = event.target.files[0];
-        if (
-          file &&
-          file.size <= 10 * 1024 * 1024 &&
-          file.type.startsWith("image/")
-        ) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const payload = {
-              user: myUsername,
-              text: "",
-              image: e.target.result,
-              timestamp: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            };
-            if (currentPrivateTarget) {
-              payload.target = currentPrivateTarget;
-              socket.emit("private_message", payload);
-            } else {
-              socket.emit("send_message", payload);
-            }
-          };
-          reader.readAsDataURL(file);
-        } else if (file && file.size > 10 * 1024 * 1024) {
-          alert("Image too large. Max 10MB.");
-        }
-        event.target.value = "";
-      }
-
-      function handleKeyPress(event) {
-        if (event.key === "Enter" && !event.shiftKey) {
-          event.preventDefault();
-          sendMessage();
-        }
-      }
-
-      // --- WEBRTC PRIVATE CALL LOGIC ---
-      let peerConnection;
-      let localStream;
-      const remoteVideo = document.getElementById("remote-video");
-      const localVideo = document.getElementById("local-video");
-      const callOverlay = document.getElementById("call-overlay");
-      const callStatus = document.getElementById("call-status");
-      const callTargetName = document.getElementById("call-target-name");
-
-      let activeCallTarget = null;
-      let isVideoCallActive = false;
-      let incomingOfferData = null;
-      let callTimerInterval = null;
-      let callSeconds = 0;
-
-      const rtcConfig = {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-        ],
+      const servers = {
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       };
 
-      function startCallTimer() {
-        callSeconds = 0;
-        clearInterval(callTimerInterval);
-        callTimerInterval = setInterval(() => {
-          callSeconds++;
-          const m = String(Math.floor(callSeconds / 60)).padStart(2, "0");
-          const s = String(callSeconds % 60).padStart(2, "0");
-          callStatus.innerText = `${m}:${s}`;
-        }, 1000);
-      }
-
-      function setupCallUI(isVideo, targetUser) {
-        isVideoCallActive = isVideo;
-        callTargetName.innerText = targetUser;
-        callOverlay.style.display = "flex";
-        callStatus.innerText = isVideo
-          ? "Video calling..."
-          : "Voice calling...";
-
-        if (isVideo) {
-          document.getElementById("video-ui").style.display = "block";
-          document.getElementById("audio-ui").style.display = "none";
-        } else {
-          document.getElementById("video-ui").style.display = "none";
-          document.getElementById("audio-ui").style.display = "flex";
-          document.getElementById("audio-avatar-initial").innerText = targetUser
-            .charAt(0)
-            .toUpperCase();
-        }
-      }
-
-      async function initiateCall(videoEnabled) {
+      function initiateCall(isVideo) {
         if (!currentPrivateTarget) return;
-        activeCallTarget = currentPrivateTarget;
+        currentCallType = isVideo ? "video" : "audio";
+        currentCallTarget = currentPrivateTarget;
+        isCallInitiator = true;
 
-        setupCallUI(videoEnabled, activeCallTarget);
-
-        try {
-          localStream = await navigator.mediaDevices.getUserMedia({
-            video: videoEnabled,
-            audio: true,
-          });
-          if (videoEnabled) localVideo.srcObject = localStream;
-
-          setupPeerConnection(false);
-          const offer = await peerConnection.createOffer();
-          await peerConnection.setLocalDescription(offer);
-
-          socket.emit("webrtc_signal", {
-            target: activeCallTarget,
-            type: "offer",
-            offer: offer,
-            caller: myUsername,
-            isVideoCall: videoEnabled,
-          });
-        } catch (error) {
-          console.error(error);
-          alert(
-            "Could not access camera/microphone. Please check permissions.",
-          );
-          endCall();
-        }
-      }
-
-      function setupPeerConnection(isGroup = false) {
-        peerConnection = new RTCPeerConnection(rtcConfig);
-
-        localStream.getTracks().forEach((track) => {
-          peerConnection.addTrack(track, localStream);
+        socket.emit("call_request", {
+          target: currentPrivateTarget,
+          type: currentCallType,
         });
 
-        peerConnection.ontrack = (event) => {
-          if (!isGroup) {
-            if (remoteVideo.srcObject !== event.streams[0]) {
-              remoteVideo.srcObject = event.streams[0];
-            }
-            remoteVideo
-              .play()
-              .catch((e) => console.log("Autoplay blocked:", e));
-            if (!callTimerInterval) startCallTimer();
-          }
-        };
-
-        peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
-            const payload = {
-              target: isGroup ? null : activeCallTarget,
-              type: "candidate",
-              candidate: event.candidate,
-              caller: myUsername,
-            };
-            if (isGroup) {
-              socket.emit("group_webrtc_signal", payload);
-            } else {
-              socket.emit("webrtc_signal", payload);
-            }
-          }
-        };
+        showCallOverlay("Calling " + currentPrivateTarget + "...");
       }
 
-      socket.on("webrtc_signal", async (data) => {
-        if (data.type === "offer") {
-          incomingOfferData = data;
-          document.getElementById("incoming-type").innerText = data.isVideoCall
-            ? "Video"
-            : "Voice";
-          document.getElementById("incoming-caller").innerText = data.caller;
-          document.getElementById("incoming-call-modal").style.display =
-            "block";
-        } else if (data.type === "answer" && peerConnection) {
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(data.answer),
-          );
-        } else if (data.type === "candidate" && peerConnection) {
-          await peerConnection.addIceCandidate(
-            new RTCIceCandidate(data.candidate),
-          );
-        } else if (data.type === "end_call") {
-          cleanupCall();
-        } else if (data.type === "call_rejected") {
-          alert(`${data.caller} declined the call.`);
-          cleanupCall();
-        }
+      socket.on("incoming_call", (data) => {
+        currentCallType = data.type;
+        currentCallTarget = data.caller;
+        isCallInitiator = false;
+
+        document.getElementById("incoming-type").textContent =
+          data.type === "video" ? "Video" : "Voice";
+        document.getElementById("incoming-caller").textContent = data.caller;
+        document.getElementById("incoming-call-modal").style.display = "block";
       });
 
-      async function acceptCall() {
+      function acceptCall() {
         document.getElementById("incoming-call-modal").style.display = "none";
-        activeCallTarget = incomingOfferData.caller;
-
-        setupCallUI(incomingOfferData.isVideoCall, activeCallTarget);
-        callStatus.innerText = "Connecting...";
-
-        try {
-          localStream = await navigator.mediaDevices.getUserMedia({
-            video: incomingOfferData.isVideoCall,
-            audio: true,
-          });
-          if (incomingOfferData.isVideoCall) localVideo.srcObject = localStream;
-
-          setupPeerConnection(false);
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(incomingOfferData.offer),
-          );
-
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-
-          socket.emit("webrtc_signal", {
-            target: activeCallTarget,
-            type: "answer",
-            answer: answer,
-            caller: myUsername,
-          });
-        } catch (e) {
-          console.error(e);
-          alert("Could not access media devices.");
-          endCall();
-        }
+        showCallOverlay("Connected with " + currentCallTarget);
+        startWebRTC(false);
       }
 
       function rejectCall() {
         document.getElementById("incoming-call-modal").style.display = "none";
-        socket.emit("webrtc_signal", {
-          target: incomingOfferData.caller,
-          type: "call_rejected",
-          caller: myUsername,
-        });
-        incomingOfferData = null;
+        socket.emit("call_reject", { target: currentCallTarget });
+        resetCallState();
       }
+
+      socket.on("call_rejected", (data) => {
+        alert(data.message);
+        endCall();
+      });
+
+      socket.on("call_accepted", (data) => {
+        showCallOverlay("Connected with " + currentCallTarget);
+        startWebRTC(true);
+      });
+
+      socket.on("call_ended", () => {
+        endCall();
+      });
+
+      function showCallOverlay(status) {
+        document.getElementById("call-status").textContent = status;
+        document.getElementById("call-target-name").textContent =
+          currentCallTarget;
+        document.getElementById("call-overlay").style.display = "flex";
+
+        const videoUI = document.getElementById("video-ui");
+        const audioUI = document.getElementById("audio-ui");
+
+        if (currentCallType === "video") {
+          videoUI.style.display = "block";
+          audioUI.style.display = "none";
+        } else {
+          videoUI.style.display = "none";
+          audioUI.style.display = "flex";
+          document.getElementById("audio-avatar-initial").textContent =
+            currentCallTarget.charAt(0).toUpperCase();
+        }
+      }
+
+      async function startWebRTC(isInitiator) {
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: currentCallType === "video",
+            audio: true,
+          });
+
+          if (currentCallType === "video") {
+            document.getElementById("local-video").srcObject = localStream;
+          }
+
+          peerConnection = new RTCPeerConnection(servers);
+          localStream
+            .getTracks()
+            .forEach((track) => peerConnection.addTrack(track, localStream));
+
+          peerConnection.ontrack = (event) => {
+            remoteStream = event.streams[0];
+            if (currentCallType === "video") {
+              document.getElementById("remote-video").srcObject = remoteStream;
+            }
+          };
+
+          peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+              socket.emit("ice_candidate", {
+                target: currentCallTarget,
+                candidate: event.candidate,
+              });
+            }
+          };
+
+          if (isInitiator) {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit("offer", { target: currentCallTarget, offer: offer });
+          }
+        } catch (err) {
+          console.error("WebRTC error:", err);
+          alert("Could not access camera/microphone");
+          endCall();
+        }
+      }
+
+      socket.on("offer", async (data) => {
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(data.offer),
+        );
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.emit("answer", { target: currentCallTarget, answer: answer });
+      });
+
+      socket.on("answer", (data) => {
+        peerConnection.setRemoteDescription(
+          new RTCSessionDescription(data.answer),
+        );
+      });
+
+      socket.on("ice_candidate", (data) => {
+        peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+      });
 
       function endCall() {
-        if (activeCallTarget) {
-          socket.emit("webrtc_signal", {
-            target: activeCallTarget,
-            type: "end_call",
-          });
-        }
-        cleanupCall();
-      }
-
-      function cleanupCall() {
         if (peerConnection) {
           peerConnection.close();
           peerConnection = null;
@@ -1710,286 +1836,220 @@
           localStream.getTracks().forEach((track) => track.stop());
           localStream = null;
         }
-        clearInterval(callTimerInterval);
-        callTimerInterval = null;
-        callSeconds = 0;
-        callOverlay.style.display = "none";
+        document.getElementById("call-overlay").style.display = "none";
         document.getElementById("incoming-call-modal").style.display = "none";
-        document.getElementById("video-ui").style.display = "none";
-        document.getElementById("audio-ui").style.display = "none";
-        remoteVideo.srcObject = null;
-        localVideo.srcObject = null;
-        activeCallTarget = null;
-        incomingOfferData = null;
+        socket.emit("call_end", { target: currentCallTarget });
+        resetCallState();
+      }
+
+      function resetCallState() {
+        currentCallType = null;
+        currentCallTarget = null;
+        isCallInitiator = false;
+        remoteStream = null;
       }
 
       // --- GROUP CALL LOGIC ---
-      let groupCallParticipants = new Map(); // sid -> {connection, stream, username}
-      let isInGroupCall = false;
-      let groupCallType = "video";
-      let groupCallTimer = null;
-      let groupCallSeconds = 0;
-      let isMuted = false;
+      let groupCallActive = false;
+      let groupCallType = null;
+      let groupCallPeers = {};
+      let groupCallLocalStream = null;
+      let mediaRecorder = null;
+      let recordedChunks = [];
+      let callStartTime = null;
+      let callTimerInterval = null;
 
       function startGroupCall(type) {
-        if (!isHost) {
-          alert("Only the host can start a group call.");
-          return;
-        }
-        socket.emit("start_group_call", { call_type: type });
+        if (!isHost) return;
+        socket.emit("start_group_call", { type: type });
       }
 
       socket.on("group_call_started", (data) => {
-        groupCallType = data.call_type;
+        groupCallType = data.type;
+        document.getElementById("group-call-type").textContent =
+          data.type === "video" ? "Video Call" : "Voice Call";
         document.getElementById("group-call-notification").style.display =
           "flex";
-        setTimeout(() => {
-          if (
-            !isInGroupCall &&
-            document.getElementById("group-call-notification").style.display ===
-              "flex"
-          ) {
-            document.getElementById("group-call-notification").style.display =
-              "none";
-          }
-        }, 30000); // Hide after 30 seconds if not joined
+        document.getElementById("call-participant-count").textContent = "1";
+        document.getElementById("max-participants").textContent =
+          data.max_participants || "4";
+
+        if (isHost) {
+          joinGroupCall();
+        }
+      });
+
+      socket.on("group_call_notification", (data) => {
+        groupCallType = data.type;
+        document.getElementById("group-call-type").textContent =
+          data.type === "video" ? "Video Call" : "Voice Call";
+        document.getElementById("group-call-notification").style.display =
+          "flex";
+        document.getElementById("call-participant-count").textContent =
+          data.participant_count;
+        document.getElementById("max-participants").textContent =
+          data.max_participants || "4";
       });
 
       async function joinGroupCall() {
         document.getElementById("group-call-notification").style.display =
           "none";
-        isInGroupCall = true;
-
         document.getElementById("group-call-overlay").style.display = "flex";
-        document.getElementById("group-call-type").innerText =
-          groupCallType === "video" ? "Video Conference" : "Voice Conference";
 
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({
+          groupCallLocalStream = await navigator.mediaDevices.getUserMedia({
             video: groupCallType === "video",
             audio: true,
           });
 
-          // Add local video to grid
-          addVideoToGrid("local", myUsername, localStream, true);
+          groupCallActive = true;
+          socket.emit("join_group_call", { type: groupCallType });
 
-          socket.emit("join_group_call");
-          startGroupTimer();
-        } catch (error) {
-          console.error("Error joining group call:", error);
+          startCallTimer();
+          updateGroupCallUI();
+        } catch (err) {
+          console.error("Group call error:", err);
           alert("Could not access camera/microphone");
           leaveGroupCall();
         }
       }
 
-      function addVideoToGrid(sid, username, stream, isLocal = false) {
-        const grid = document.getElementById("group-call-grid");
-        let container = document.getElementById(`video-container-${sid}`);
-
-        if (!container) {
-          container = document.createElement("div");
-          container.id = `video-container-${sid}`;
-          container.className =
-            groupCallType === "video" ? "group-call-video" : "group-call-audio";
-
-          if (groupCallType === "video") {
-            const video = document.createElement("video");
-            video.id = `video-${sid}`;
-            video.autoplay = true;
-            video.playsinline = true;
-            if (isLocal) video.muted = true;
-            video.srcObject = stream;
-            container.appendChild(video);
-          } else {
-            const avatar = document.createElement("div");
-            avatar.innerText = username.charAt(0).toUpperCase();
-            container.appendChild(avatar);
-          }
-
-          const label = document.createElement("div");
-          label.className = "video-label";
-          label.innerText = isLocal ? `${username} (You)` : username;
-          container.appendChild(label);
-
-          grid.appendChild(container);
-        }
-      }
-
-      function removeVideoFromGrid(sid) {
-        const container = document.getElementById(`video-container-${sid}`);
-        if (container) container.remove();
-      }
-
-      socket.on("group_call_joined", (data) => {
-        // Create peer connections with existing participants
-        data.participants.forEach((participant) => {
-          createPeerConnection(participant.sid, participant.name, true);
-        });
-      });
-
-      socket.on("group_call_new_peer", (data) => {
-        // New peer joined, create offer
-        createPeerConnection(data.new_peer_sid, data.new_peer_name, false);
-      });
-
-      socket.on("group_call_user_left", (data) => {
-        if (groupCallParticipants.has(data.sid)) {
-          const pc = groupCallParticipants.get(data.sid).connection;
-          if (pc) pc.close();
-          groupCallParticipants.delete(data.sid);
-          removeVideoFromGrid(data.sid);
-        }
-      });
-
-      socket.on("group_call_ended", () => {
-        alert("The host has ended the group call.");
-        cleanupGroupCall();
-      });
-
-      async function createPeerConnection(sid, username, createOffer) {
-        const pc = new RTCPeerConnection(rtcConfig);
-
-        groupCallParticipants.set(sid, {
-          connection: pc,
-          username: username,
-          stream: null,
-        });
-
-        localStream.getTracks().forEach((track) => {
-          pc.addTrack(track, localStream);
-        });
-
-        pc.ontrack = (event) => {
-          const participant = groupCallParticipants.get(sid);
-          if (participant && !participant.stream) {
-            participant.stream = event.streams[0];
-            addVideoToGrid(sid, username, event.streams[0]);
-          }
-        };
-
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit("group_webrtc_signal", {
-              target_sid: sid,
-              type: "candidate",
-              signal: { candidate: event.candidate },
-            });
-          }
-        };
-
-        if (createOffer) {
-          try {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            socket.emit("group_webrtc_signal", {
-              target_sid: sid,
-              type: "offer",
-              signal: { offer: offer },
-            });
-          } catch (e) {
-            console.error("Error creating offer:", e);
-          }
-        }
-      }
-
-      socket.on("group_webrtc_signal", async (data) => {
-        const { sender_sid, sender_name, signal, type } = data;
-
-        if (type === "offer") {
-          if (!groupCallParticipants.has(sender_sid)) {
-            await createPeerConnection(sender_sid, sender_name, false);
-          }
-          const pc = groupCallParticipants.get(sender_sid).connection;
-          await pc.setRemoteDescription(
-            new RTCSessionDescription(signal.offer),
-          );
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-
-          socket.emit("group_webrtc_signal", {
-            target_sid: sender_sid,
-            type: "answer",
-            signal: { answer: answer },
-          });
-        } else if (type === "answer") {
-          const participant = groupCallParticipants.get(sender_sid);
-          if (participant && participant.connection) {
-            await participant.connection.setRemoteDescription(
-              new RTCSessionDescription(signal.answer),
-            );
-          }
-        } else if (type === "candidate") {
-          const participant = groupCallParticipants.get(sender_sid);
-          if (participant && participant.connection) {
-            await participant.connection.addIceCandidate(
-              new RTCIceCandidate(signal.candidate),
-            );
-          }
-        }
-      });
-
-      function startGroupTimer() {
-        groupCallSeconds = 0;
-        clearInterval(groupCallTimer);
-        groupCallTimer = setInterval(() => {
-          groupCallSeconds++;
-          const m = String(Math.floor(groupCallSeconds / 60)).padStart(2, "0");
-          const s = String(groupCallSeconds % 60).padStart(2, "0");
-          document.getElementById("group-call-timer").innerText = `${m}:${s}`;
+      function startCallTimer() {
+        callStartTime = Date.now();
+        callTimerInterval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+          const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
+          const secs = String(elapsed % 60).padStart(2, "0");
+          document.getElementById("group-call-timer").textContent =
+            `${mins}:${secs}`;
         }, 1000);
       }
 
+      function updateGroupCallUI() {
+        const grid = document.getElementById("group-call-grid");
+        grid.innerHTML = "";
+
+        // Add local video/audio
+        const localDiv = document.createElement("div");
+        localDiv.className =
+          groupCallType === "video" ? "group-call-video" : "group-call-audio";
+
+        if (groupCallType === "video") {
+          const video = document.createElement("video");
+          video.srcObject = groupCallLocalStream;
+          video.autoplay = true;
+          video.muted = true;
+          video.playsInline = true;
+          localDiv.appendChild(video);
+        } else {
+          localDiv.innerHTML = `<div style="font-size: 2em;">${myUsername.charAt(0).toUpperCase()}</div><div style="font-size: 0.5em; margin-top: 10px;">You</div>`;
+        }
+
+        const label = document.createElement("div");
+        label.className = "video-label";
+        label.textContent = "You";
+        localDiv.appendChild(label);
+
+        grid.appendChild(localDiv);
+      }
+
       function toggleMute() {
-        if (localStream) {
-          const audioTrack = localStream.getAudioTracks()[0];
+        if (groupCallLocalStream) {
+          const audioTrack = groupCallLocalStream.getAudioTracks()[0];
           if (audioTrack) {
             audioTrack.enabled = !audioTrack.enabled;
-            isMuted = !audioTrack.enabled;
-            document.querySelector(".control-btn.mute").innerText = isMuted
-              ? "🔇"
-              : "🎤";
-            document.querySelector(".control-btn.mute").style.background =
-              isMuted ? "#e74c3c" : "#f39c12";
+            event.target.textContent = audioTrack.enabled ? "🎤" : "🔇";
           }
         }
       }
 
-      function leaveGroupCall() {
-        socket.emit("leave_group_call");
-        cleanupGroupCall();
+      function toggleVideo() {
+        if (groupCallLocalStream && groupCallType === "video") {
+          const videoTrack = groupCallLocalStream.getVideoTracks()[0];
+          if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            event.target.textContent = videoTrack.enabled ? "📹" : "🚫";
+          }
+        }
       }
 
-      function cleanupGroupCall() {
-        isInGroupCall = false;
-        clearInterval(groupCallTimer);
-        groupCallSeconds = 0;
+      function toggleRecording() {
+        const btn = document.getElementById("record-btn");
 
-        groupCallParticipants.forEach((participant) => {
-          if (participant.connection) participant.connection.close();
-        });
-        groupCallParticipants.clear();
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
+          btn.classList.remove("recording");
+        } else {
+          if (!groupCallLocalStream) return;
 
-        if (localStream) {
-          localStream.getTracks().forEach((track) => track.stop());
-          localStream = null;
+          recordedChunks = [];
+          mediaRecorder = new MediaRecorder(groupCallLocalStream);
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) recordedChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: "video/webm" });
+            const url = URL.createObjectURL(blob);
+            document.getElementById("recording-preview").src = url;
+            document.getElementById("recording-modal").style.display = "block";
+          };
+
+          mediaRecorder.start();
+          btn.classList.add("recording");
         }
+      }
+
+      function downloadRecording() {
+        const blob = new Blob(recordedChunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `nexusnet-recording-${Date.now()}.webm`;
+        a.click();
+        closeRecordingModal();
+      }
+
+      function closeRecordingModal() {
+        document.getElementById("recording-modal").style.display = "none";
+        document.getElementById("recording-preview").src = "";
+      }
+
+      function leaveGroupCall() {
+        if (groupCallLocalStream) {
+          groupCallLocalStream.getTracks().forEach((track) => track.stop());
+          groupCallLocalStream = null;
+        }
+
+        clearInterval(callTimerInterval);
+        groupCallActive = false;
 
         document.getElementById("group-call-overlay").style.display = "none";
-        document.getElementById("group-call-grid").innerHTML = "";
-        document.getElementById("group-call-timer").innerText = "00:00";
-
-        // Reset mute button
-        isMuted = false;
-        document.querySelector(".control-btn.mute").innerText = "🎤";
-        document.querySelector(".control-btn.mute").style.background =
-          "#f39c12";
+        socket.emit("leave_group_call");
       }
 
-      // Cleanup on page unload
-      window.onbeforeunload = () => {
-        if (isInGroupCall) {
-          socket.emit("leave_group_call");
+      socket.on("user_joined_group_call", (data) => {
+        document.getElementById("group-participant-count").textContent =
+          `${data.participant_count}/${data.max_participants}`;
+      });
+
+      socket.on("user_left_group_call", (data) => {
+        document.getElementById("group-participant-count").textContent =
+          `${data.participant_count}/${data.max_participants}`;
+      });
+
+      socket.on("group_call_ended", () => {
+        if (groupCallActive) {
+          leaveGroupCall();
         }
+        document.getElementById("group-call-notification").style.display =
+          "none";
+      });
+
+      // --- INITIALIZATION ---
+      window.onload = () => {
+        messageInput.focus();
       };
     </script>
   </body>
