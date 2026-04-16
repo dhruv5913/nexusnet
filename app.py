@@ -17,8 +17,8 @@ socketio = SocketIO(
     max_http_buffer_size=10 * 1024 * 1024,
     cors_allowed_origins="*",
     async_mode='eventlet',
-    ping_timeout=60,
-    ping_interval=25,
+    ping_timeout=90,  # Increased from 60
+    ping_interval=30,  # Increased from 25
     logger=True,
     engineio_logger=True
 )
@@ -45,6 +45,11 @@ def index():
     img.save(buffered, format="PNG")
     qr_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return render_template('index.html', app_url=app_url, qr_code=qr_base64)
+
+# ---------- HEARTBEAT / KEEPALIVE ----------
+@socketio.on('ping')
+def handle_ping():
+    emit('pong')
 
 # ---------- ROOM LOGIC ----------
 @socketio.on('create_room')
@@ -343,6 +348,26 @@ def handle_leave_group_call():
         if len(active_group_calls[room_code]['participants']) == 0:
             del active_group_calls[room_code]
 
+@socketio.on('remove_from_group_call')
+def handle_remove_from_group_call(data):
+    room_code = user_room_map.get(request.sid)
+    if not room_code or room_code not in active_group_calls:
+        return
+    if active_group_calls[room_code]['host'] != request.sid:
+        return
+    target_sid = data.get('target_sid')
+    if target_sid and target_sid in active_group_calls[room_code]['participants']:
+        active_group_calls[room_code]['participants'].remove(target_sid)
+        username = active_rooms[room_code]['users'].get(target_sid, 'Unknown')
+        emit('user_left_group_call', {
+            'sid': target_sid,
+            'username': username,
+            'participant_count': len(active_group_calls[room_code]['participants'])
+        }, to=room_code)
+        emit('kicked_from_call', {'message': 'You were removed from the group call by the host.'}, to=target_sid)
+        if len(active_group_calls[room_code]['participants']) == 0:
+            del active_group_calls[room_code]
+
 @socketio.on('end_group_call')
 def handle_end_group_call():
     room_code = user_room_map.get(request.sid)
@@ -398,4 +423,3 @@ def handle_delete(data):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
-    # app.run(debug=True)
